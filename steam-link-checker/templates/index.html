@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Steam Link Checker</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            background:
+                radial-gradient(circle at top, #1b2838 0%, #0b1118 45%, #070b10 100%);
+
+            font-family: Arial, Helvetica, sans-serif;
+            color: white;
+        }
+
+        .container {
+            width: min(650px, 92%);
+        }
+
+        .card {
+            background: rgba(18, 26, 36, 0.96);
+
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 18px;
+
+            padding: 35px;
+
+            box-shadow:
+                0 25px 80px rgba(0,0,0,0.5);
+        }
+
+        .logo {
+            text-align: center;
+            font-size: 42px;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #8f9baa;
+            margin-top: 8px;
+            margin-bottom: 30px;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+
+            background: #0b1118;
+            border: 1px solid #2a394b;
+
+            color: white;
+
+            padding: 15px 16px;
+
+            border-radius: 10px;
+
+            outline: none;
+
+            font-size: 15px;
+        }
+
+        input:focus {
+            border-color: #66c0f4;
+        }
+
+        button {
+            border: none;
+            border-radius: 10px;
+
+            padding: 0 22px;
+
+            background: #1a9fff;
+            color: white;
+
+            font-size: 15px;
+            font-weight: bold;
+
+            cursor: pointer;
+
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #38adff;
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        #result {
+            display: none;
+
+            margin-top: 25px;
+
+            padding: 20px;
+
+            border-radius: 12px;
+
+            background: #0b1118;
+
+            border: 1px solid #263548;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .valid {
+            color: #66e3a3;
+        }
+
+        .invalid {
+            color: #ff6b6b;
+        }
+
+        .info {
+            color: #aeb8c4;
+            margin-top: 7px;
+        }
+
+        .id {
+            margin-top: 12px;
+
+            padding: 10px;
+
+            background: #111b26;
+
+            border-radius: 8px;
+
+            font-family: monospace;
+        }
+
+        .footer {
+            text-align: center;
+
+            color: #687585;
+
+            font-size: 12px;
+
+            margin-top: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .card {
+                padding: 25px;
+            }
+
+            .input-container {
+                flex-direction: column;
+            }
+
+            button {
+                height: 48px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="card">
+
+        <div class="logo">◉</div>
+
+        <h1>STEAM LINK CHECKER</h1>
+
+        <div class="subtitle">
+            Detect Steam games and Workshop links
+        </div>
+
+        <div class="input-container">
+
+            <input
+                id="url"
+                type="text"
+                placeholder="https://steamcommunity.com/..."
+                autocomplete="off"
+            >
+
+            <button id="checkButton" onclick="checkLink()">
+                CHECK
+            </button>
+
+        </div>
+
+        <div id="result"></div>
+
+        <div class="footer">
+            Steam Link Checker
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+async function checkLink() {
+
+    const input = document.getElementById("url");
+    const button = document.getElementById("checkButton");
+    const result = document.getElementById("result");
+
+    const url = input.value.trim();
+
+    if (!url) {
+        showResult(
+            false,
+            "MISSING URL",
+            "Enter a Steam URL first."
+        );
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "CHECKING...";
+
+    result.style.display = "none";
+
+    try {
+
+        const response = await fetch(
+            "/check?url=" + encodeURIComponent(url)
+        );
+
+        const data = await response.json();
+
+        let extra = "";
+
+        if (data.id) {
+            extra += `
+                <div class="id">
+                    ID: ${escapeHtml(data.id)}
+                </div>
+            `;
+        }
+
+        if (data.name) {
+            extra += `
+                <div class="id">
+                    NAME: ${escapeHtml(data.name)}
+                </div>
+            `;
+        }
+
+        showResult(
+            data.valid,
+            data.type,
+            data.details,
+            extra
+        );
+
+    } catch (error) {
+
+        showResult(
+            false,
+            "ERROR",
+            "Could not connect to the server."
+        );
+
+    }
+
+    button.disabled = false;
+    button.textContent = "CHECK";
+}
+
+
+function showResult(valid, title, details, extra = "") {
+
+    const result = document.getElementById("result");
+
+    result.style.display = "block";
+
+    result.innerHTML = `
+        <div class="result-title ${valid ? "valid" : "invalid"}">
+            ${valid ? "✓" : "✕"} ${escapeHtml(title)}
+        </div>
+
+        <div class="info">
+            ${escapeHtml(details)}
+        </div>
+
+        ${extra}
+    `;
+}
+
+
+function escapeHtml(text) {
+
+    const div = document.createElement("div");
+
+    div.textContent = text;
+
+    return div.innerHTML;
+}
+
+
+document
+    .getElementById("url")
+    .addEventListener("keydown", function(event) {
+
+        if (event.key === "Enter") {
+            checkLink();
+        }
+
+    });
+
+</script>
+
+</body>
+</html>
